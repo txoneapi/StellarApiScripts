@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ==============================================================================
 # FILE      : Stellar_CopyGroupPolicy.py
-# CREATED   : 2026-03-13 00:00:00
+# CREATED   : 2026-03-14 00:01:44
 # PURPOSE   : Copies the security policy from one StellarOne agent group to
 #             another, creating the destination group if it does not yet exist.
 # ==============================================================================

@@ -1,5 +1,7 @@
 # StellarCopyGroupPolicy - Product Requirements
 
+**Created:** 2026-03-14 00:01:44
+
 ## Overview
 
 Create scripts in **PowerShell**, **Python**, and **Bash** that:
