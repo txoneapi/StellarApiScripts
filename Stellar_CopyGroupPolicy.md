@@ -16,7 +16,7 @@ In TXOne StellarOne, every group of managed agents can have its own security pol
 
 | Step | What the script does |
 |------|----------------------|
-| **1** | Reads the StellarOne server address from `StellarOne.conf` and the API authentication key from `secrets.txt`. |
+| **1** | Reads the StellarOne server address and API authentication key from `StellarOne.conf`. |
 | **2** | Establishes a secure connection to the StellarOne server (bypasses self-signed certificate warnings). |
 | **3** | Downloads the **complete list of all agent groups** from StellarOne (handles multi-page results automatically). |
 | **4** | Finds the **source group** by name. Stops with a clear error message if it does not exist. |
@@ -33,14 +33,16 @@ Before running the script, make sure you have:
 
 - **Windows PowerShell 5.1** (built into Windows 10 / Windows Server 2016 and later)
 - **Network access** to the StellarOne management server
-- **Two configuration files** in the same folder as the script:
+- **One configuration file** in the same folder as the script:
 
   | File | Purpose | Example content |
   |------|---------|-----------------|
-  | `StellarOne.conf` | Server address | `StellarOneURL="https://192.168.23.119"` |
-  | `secrets.txt` | API authentication key | `ApiKey="391113a9b449..."` |
+  | `StellarOne.conf` | Server address and API key | `StellarOneURL="https://192.168.23.119"` |
+  |                   |                            | `ApiKey="391113a9b449..."` |
 
-> **Security note:** The `secrets.txt` file contains a sensitive credential. Restrict access to this file to authorised administrators only.
+  Copy `stellarOne_example.conf` to `StellarOne.conf` and fill in your values.
+
+> **Security note:** `StellarOne.conf` contains sensitive credentials. Restrict access to this file to authorised administrators only. Never commit it to version control.
 
 ---
 
@@ -165,9 +167,9 @@ Open the destination group in the StellarOne management console and configure:
 | Problem | Likely cause | Solution |
 |---------|-------------|----------|
 | `Source group 'X' was NOT found` | Group name is misspelled or has different capitalisation | Check the exact name in the StellarOne console |
-| `API call failed - HTTP 401` | API key is wrong or expired | Generate a new API key in StellarOne and update `secrets.txt` |
+| `API call failed - HTTP 401` | API key is wrong or expired | Generate a new API key in StellarOne and update `StellarOne.conf` |
 | `API call failed - HTTP 403` | API key does not have the required permissions | Ask your StellarOne administrator to check the API key's scope |
-| `Could not read the StellarOne server URL` | `StellarOne.conf` has wrong format | Ensure the file contains exactly: `StellarOneURL="https://..."` |
+| `Could not read the StellarOne server URL` | `StellarOne.conf` has wrong format | Ensure the file contains `StellarOneURL="https://..."` and `ApiKey="..."` |
 | SSL/TLS connection error | Wrong server address or firewall blocking port 443 | Verify the URL in `StellarOne.conf` and network connectivity |
 
 ---
@@ -176,8 +178,10 @@ Open the destination group in the StellarOne management console and configure:
 
 ```
 StellarAPI/
-  Stellar_CopyGroupPolicy.ps1   <-- The main script (run this)
+  Stellar_CopyGroupPolicy.ps1   <-- PowerShell script
+  Stellar_CopyGroupPolicy.py    <-- Python script
+  Stellar_CopyGroupPolicy.sh    <-- Bash script
   Stellar_CopyGroupPolicy.md    <-- This documentation file
-  StellarOne.conf               <-- Server address (edit with your server's IP/hostname)
-  secrets.txt                   <-- API key  (keep this file private!)
+  StellarOne.conf               <-- Server URL + API key  (keep this file private!)
+  stellarOne_example.conf       <-- Template -- copy to StellarOne.conf and fill in values
 ```

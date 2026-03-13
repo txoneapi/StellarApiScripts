@@ -36,7 +36,6 @@
 #   - python3 : used as JSON processor (standard on Linux/macOS; available via
 #               Python installer on Windows)
 #   - StellarOne.conf in the same folder as this script
-#   - secrets.txt     in the same folder as this script
 #   - Network access to the StellarOne management server
 #
 # TESTED ON
@@ -89,47 +88,42 @@ DEST_GROUP_NAME="$2"
 # ==============================================================================
 # SECTION 2 - READ CONFIGURATION FILES
 # ==============================================================================
-# Rather than hard-coding the server address and API key directly in this
-# script (which would be a security risk if the script is shared), we read
-# them from two separate files that live alongside the script.
+# All configuration lives in a single file alongside the script:
 #
-#   StellarOne.conf  ->  contains the URL of the StellarOne management server
-#   secrets.txt      ->  contains the API key used to authenticate every request
+#   StellarOne.conf  ->  server URL and API authentication key
+#
+# Copy stellarOne_example.conf to StellarOne.conf and fill in your values.
+# Never commit StellarOne.conf to version control -- it contains credentials.
 
 # SCRIPT_DIR resolves to the folder where this .sh file is saved, even when
 # the script is called from a different working directory.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 CONF_PATH="${SCRIPT_DIR}/StellarOne.conf"
-SECRETS_PATH="${SCRIPT_DIR}/secrets.txt"
 
-for config_file in "$CONF_PATH" "$SECRETS_PATH"; do
-    if [[ ! -f "$config_file" ]]; then
-        echo "ERROR: Required configuration file not found: $config_file"
-        echo "Please make sure this file is in the same folder as the script."
-        exit 1
-    fi
-done
+if [[ ! -f "$CONF_PATH" ]]; then
+    echo "ERROR: Required configuration file not found: $CONF_PATH"
+    echo "Please copy stellarOne_example.conf to StellarOne.conf and fill in your values."
+    exit 1
+fi
 
-# Parse StellarOne.conf  -- expected format:  StellarOneURL="https://x.x.x.x"
-# The grep command searches for the pattern; bash then captures the value.
+# Parse StellarOne.conf -- expected format:
+#   StellarOneURL="https://x.x.x.x"
+#   ApiKey="<long hex string>"
 if ! grep -qE 'StellarOneURL="[^"]+"' "$CONF_PATH"; then
     echo "ERROR: Could not read the StellarOne server URL from: $CONF_PATH"
     echo 'Expected a line like:  StellarOneURL="https://192.168.1.1"'
     exit 1
 fi
-# Extract the URL value between the double quotes.
 BASE_URL=$(grep -oE 'StellarOneURL="[^"]+"' "$CONF_PATH" | sed 's/StellarOneURL="//;s/"$//')
-# Remove any trailing slash for consistency.
 BASE_URL="${BASE_URL%/}"
 
-# Parse secrets.txt  -- expected format:  ApiKey="<long hex string>"
-if ! grep -qE 'ApiKey="[^"]+"' "$SECRETS_PATH"; then
-    echo "ERROR: Could not read the API key from: $SECRETS_PATH"
+if ! grep -qE 'ApiKey="[^"]+"' "$CONF_PATH"; then
+    echo "ERROR: Could not read the API key from: $CONF_PATH"
     echo 'Expected a line like:  ApiKey="abc123..."'
     exit 1
 fi
-API_KEY=$(grep -oE 'ApiKey="[^"]+"' "$SECRETS_PATH" | sed 's/ApiKey="//;s/"$//')
+API_KEY=$(grep -oE 'ApiKey="[^"]+"' "$CONF_PATH" | sed 's/ApiKey="//;s/"$//')
 KEY_PREVIEW="${API_KEY:0:8}"
 
 echo ""

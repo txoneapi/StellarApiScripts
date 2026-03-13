@@ -1,6 +1,6 @@
 # Stellar_copyAgentPolicy
 
-A PowerShell 5.1 script that copies the security policy from one **TXOne StellarOne** agent group to another via the StellarOne REST API.
+Scripts (PowerShell, Python, Bash) that copy the security policy from one **TXOne StellarOne** agent group to another via the StellarOne REST API.
 
 ## What it does
 
@@ -12,14 +12,25 @@ A PowerShell 5.1 script that copies the security policy from one **TXOne Stellar
 ## Quick start
 
 ```powershell
+# PowerShell
 .\Stellar_CopyGroupPolicy.ps1 -SourceAgentGroup "GroupA" -DestinationAgentGroup "GroupB"
+```
+
+```bash
+# Python (cross-platform)
+python Stellar_CopyGroupPolicy.py "GroupA" "GroupB"
+```
+
+```bash
+# Bash (Linux / macOS / Git Bash)
+bash Stellar_CopyGroupPolicy.sh "GroupA" "GroupB"
 ```
 
 ## Setup
 
-1. Copy `stellarOne_example.conf` to `StellarOne.conf` and set your server URL
-2. Copy `secrets_example.txt` to `secrets.txt` and set your StellarOne API key
-3. Run the script from a PowerShell 5.1 window
+1. Copy `stellarOne_example.conf` to `StellarOne.conf`
+2. Fill in your StellarOne server URL and API key
+3. Run the script of your choice
 
 ## Known limitation
 
@@ -29,9 +40,10 @@ Agent passwords are **not copied**. The StellarOne API never exposes password va
 
 | File | Description |
 |------|-------------|
-| `Stellar_CopyGroupPolicy.ps1` | The main script |
+| `Stellar_CopyGroupPolicy.ps1` | PowerShell 5.1 script |
+| `Stellar_CopyGroupPolicy.py` | Python 3 script |
+| `Stellar_CopyGroupPolicy.sh` | Bash script |
 | `Stellar_CopyGroupPolicy.md` | Full documentation |
 | `Stellar_CopyGroupPolicy.pdf` | PDF version of the documentation |
-| `stellarOne_example.conf` | Template for server configuration |
-| `secrets_example.txt` | Template for API credentials |
+| `stellarOne_example.conf` | Template — copy to `StellarOne.conf` and fill in your values |
 | `StellarCopyGroupPolicy.prd.md` | Original requirements |

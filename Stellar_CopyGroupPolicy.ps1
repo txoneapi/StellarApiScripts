@@ -50,7 +50,6 @@
     Prerequisites:
       - PowerShell 5.1 or later (built into Windows 10 / Server 2016+)
       - StellarOne.conf  must be in the same folder as this script
-      - secrets.txt      must be in the same folder as this script
       - Network access to the StellarOne management server
 #>
 
@@ -82,20 +81,20 @@ $ErrorActionPreference = "Stop"
 # $ScriptDir resolves to the folder where this .ps1 file is saved.
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
-$ConfPath    = Join-Path $ScriptDir "StellarOne.conf"
-$SecretsPath = Join-Path $ScriptDir "secrets.txt"
+$ConfPath = Join-Path $ScriptDir "StellarOne.conf"
 
-# Verify both files exist before proceeding.
-foreach ($FilePath in @($ConfPath, $SecretsPath)) {
-    if (-not (Test-Path $FilePath)) {
-        Write-Error ("Required configuration file not found: $FilePath`n" +
-                     "Please make sure this file is in the same folder as the script.")
-        exit 1
-    }
+# Verify the configuration file exists before proceeding.
+if (-not (Test-Path $ConfPath)) {
+    Write-Error ("Required configuration file not found: $ConfPath`n" +
+                 "Please copy stellarOne_example.conf to StellarOne.conf and fill in your values.")
+    exit 1
 }
 
-# Parse StellarOne.conf  -- expected format:  StellarOneURL="https://x.x.x.x"
+# Parse StellarOne.conf  -- expected format:
+#   StellarOneURL="https://x.x.x.x"
+#   ApiKey="<long hex string>"
 $ConfContent = Get-Content $ConfPath -Raw
+
 if ($ConfContent -match 'StellarOneURL="([^"]+)"') {
     $BaseUrl = $Matches[1].TrimEnd('/')
 } else {
@@ -104,12 +103,10 @@ if ($ConfContent -match 'StellarOneURL="([^"]+)"') {
     exit 1
 }
 
-# Parse secrets.txt  -- expected format:  ApiKey="<long hex string>"
-$SecretsContent = Get-Content $SecretsPath -Raw
-if ($SecretsContent -match 'ApiKey="([^"]+)"') {
+if ($ConfContent -match 'ApiKey="([^"]+)"') {
     $ApiKey = $Matches[1]
 } else {
-    Write-Error ("Could not read the API key from: $SecretsPath`n" +
+    Write-Error ("Could not read the API key from: $ConfPath`n" +
                  'Expected a line like:  ApiKey="abc123..."')
     exit 1
 }

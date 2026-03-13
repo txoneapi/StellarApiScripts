@@ -1,5 +1,4 @@
 # Real secrets and environment-specific config -- NEVER commit these
-secrets.txt
 StellarOne.conf
 GithubCredentials.txt
 

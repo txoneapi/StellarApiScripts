@@ -37,7 +37,6 @@ USAGE
 PREREQUISITES
     - Python 3.6 or later  (standard library only -- no pip install required)
     - StellarOne.conf  in the same folder as this script
-    - secrets.txt      in the same folder as this script
     - Network access to the StellarOne management server
 """
 
@@ -83,17 +82,17 @@ DEST_GROUP_NAME   = sys.argv[2]
 # os.path.abspath(__file__) gives the full path to this script regardless of
 # which directory it is run from.  dirname() then strips the filename, leaving
 # just the folder path.
-SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
-CONF_PATH    = os.path.join(SCRIPT_DIR, "StellarOne.conf")
-SECRETS_PATH = os.path.join(SCRIPT_DIR, "secrets.txt")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CONF_PATH  = os.path.join(SCRIPT_DIR, "StellarOne.conf")
 
-for path in (CONF_PATH, SECRETS_PATH):
-    if not os.path.isfile(path):
-        print(f"ERROR: Required configuration file not found: {path}")
-        print("Please make sure this file is in the same folder as the script.")
-        sys.exit(1)
+if not os.path.isfile(CONF_PATH):
+    print(f"ERROR: Required configuration file not found: {CONF_PATH}")
+    print("Please copy stellarOne_example.conf to StellarOne.conf and fill in your values.")
+    sys.exit(1)
 
-# Parse StellarOne.conf  -- expected format:  StellarOneURL="https://x.x.x.x"
+# Parse StellarOne.conf  -- expected format:
+#   StellarOneURL="https://x.x.x.x"
+#   ApiKey="<long hex string>"
 with open(CONF_PATH, encoding="utf-8") as fh:
     conf_text = fh.read()
 
@@ -105,13 +104,9 @@ if not m:
 
 BASE_URL = m.group(1).rstrip("/")
 
-# Parse secrets.txt  -- expected format:  ApiKey="<long hex string>"
-with open(SECRETS_PATH, encoding="utf-8") as fh:
-    secrets_text = fh.read()
-
-m = re.search(r'ApiKey="([^"]+)"', secrets_text)
+m = re.search(r'ApiKey="([^"]+)"', conf_text)
 if not m:
-    print(f"ERROR: Could not read the API key from: {SECRETS_PATH}")
+    print(f"ERROR: Could not read the API key from: {CONF_PATH}")
     print('Expected a line like:  ApiKey="abc123..."')
     sys.exit(1)
 
