@@ -384,6 +384,40 @@ function Get-AllAgents {
 #
 # Returns  : An ordered array of group name strings, root first.
 # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Function : Format-Timestamp
+# Purpose  : Converts a Unix timestamp (int or numeric string) returned by the
+#            StellarOne API into a readable UTC date string.
+#
+# StellarOne uses int64 for all timestamps; the REST layer may return them as
+# a plain integer or as a quoted string.  Both are handled here.
+# Returns an empty string for zero, null, or unparseable values.
+# ------------------------------------------------------------------------------
+function Format-Timestamp {
+    param($Val)
+    if (-not $Val -or "$Val" -eq "" -or "$Val" -eq "0") { return "" }
+    try {
+        $ts = [long]"$Val"
+        if ($ts -eq 0) { return "" }
+        return [System.DateTimeOffset]::FromUnixTimeSeconds($ts).UtcDateTime.ToString("yyyy-MM-dd HH:mm UTC")
+    } catch { return "" }
+}
+
+
+# ------------------------------------------------------------------------------
+# Function : Get-AgentProp
+# Purpose  : Safely retrieves a property value from an agent PSCustomObject.
+#            Returns $Default if the property does not exist or is null.
+# ------------------------------------------------------------------------------
+function Get-AgentProp {
+    param($Obj, [string]$Name, $Default = "")
+    if ($Obj.PSObject.Properties[$Name] -and $null -ne $Obj.$Name) {
+        return "$($Obj.$Name)"
+    }
+    return $Default
+}
+
+
 function Resolve-GroupPath {
     param(
         [string]$GroupUuid,
@@ -481,11 +515,46 @@ foreach ($Agent in $AllAgents) {
     $OnlineStr = if ($OnlineRaw) { "Yes" } else { "No" }
 
     $ResolvedAgents.Add([PSCustomObject]@{
-        Hostname    = if ($Agent.PSObject.Properties["hostname"])  { $Agent.hostname  } else { "" }
-        IP          = if ($Agent.PSObject.Properties["ipAddress"]) { $Agent.ipAddress } else { "" }
+        # Fixed identity columns
+        Hostname    = Get-AgentProp $Agent "hostname"
+        IP          = Get-AgentProp $Agent "ipAddress"
         Online      = $OnlineStr
         DirectGroup = $DirectGroup
-        Path        = $Path      # array: ["All", "SiteA", ...]
+        # Identity / Inventory
+        MACAddress  = Get-AgentProp $Agent "macAddress"
+        OS          = Get-AgentProp $Agent "os"
+        Vendor      = Get-AgentProp $Agent "vendor"
+        Model       = Get-AgentProp $Agent "model"
+        Location    = Get-AgentProp $Agent "location"
+        Description = Get-AgentProp $Agent "description"
+        Product     = Get-AgentProp $Agent "productCode"
+        Version     = Get-AgentProp $Agent "productVersion"
+        # Status / Health
+        SyncStatus      = Get-AgentProp $Agent "syncStatus"
+        RealtimeScan    = Get-AgentProp $Agent "realtimeScanStatus"
+        Lockdown        = Get-AgentProp $Agent "lockdownStatus"
+        Maintenance     = Get-AgentProp $Agent "maintenanceStatus"
+        ComponentStatus = Get-AgentProp $Agent "componentStatus"
+        RebootRequired  = if ($Agent.PSObject.Properties["rebootRequired"] -and $Agent.rebootRequired) { "Yes" } else { "No" }
+        TimeGap         = Get-AgentProp $Agent "timeGap"
+        # License
+        LicenseStatus = Get-AgentProp $Agent "licenseStatus"
+        LicenseType   = Get-AgentProp $Agent "licenseType"
+        LicenseExpiry = Format-Timestamp (Get-AgentProp $Agent "licenseExpiredAt")
+        # Security features
+        ApprovedListState    = Get-AgentProp $Agent "approvedListState"
+        ApprovedListCount    = Get-AgentProp $Agent "approvedListCount"
+        ApprovedListProgress = Get-AgentProp $Agent "approvedListProgress"
+        OBADMode             = Get-AgentProp $Agent "obadMode"
+        OBADProgress         = Get-AgentProp $Agent "obadProgress"
+        DeviceControl        = Get-AgentProp $Agent "deviceControlStatus"
+        # Timestamps
+        LastConnected       = Format-Timestamp (Get-AgentProp $Agent "connectedAt")
+        LastUpgraded        = Format-Timestamp (Get-AgentProp $Agent "upgradedAt")
+        LastComponentUpdate = Format-Timestamp (Get-AgentProp $Agent "lastComponentUpdatedAt")
+        RegisteredAt        = Format-Timestamp (Get-AgentProp $Agent "createdAt")
+        # Tree (computed above)
+        Path        = $Path
         FullPath    = $FullPath
     }) | Out-Null
 
@@ -527,14 +596,44 @@ $AllRows = [System.Collections.ArrayList]::new()
 foreach ($Agent in $ResolvedAgents) {
     $Row = [ordered]@{}
 
-    # Fixed columns first.
+    # Fixed identity columns.
     $Row["Hostname"]    = $Agent.Hostname
     $Row["IP"]          = $Agent.IP
     $Row["Online"]      = $Agent.Online
     $Row["DirectGroup"] = $Agent.DirectGroup
 
-    # Tree columns: path[0] goes under "All", path[1] under "L2", etc.
-    # Shorter paths leave the trailing columns empty.
+    # Detail columns (all agent fields, in order).
+    $Row["MAC Address"]             = $Agent.MACAddress
+    $Row["OS"]                      = $Agent.OS
+    $Row["Vendor"]                  = $Agent.Vendor
+    $Row["Model"]                   = $Agent.Model
+    $Row["Location"]                = $Agent.Location
+    $Row["Description"]             = $Agent.Description
+    $Row["Product"]                 = $Agent.Product
+    $Row["Version"]                 = $Agent.Version
+    $Row["Sync Status"]             = $Agent.SyncStatus
+    $Row["Realtime Scan"]           = $Agent.RealtimeScan
+    $Row["Lockdown"]                = $Agent.Lockdown
+    $Row["Maintenance"]             = $Agent.Maintenance
+    $Row["Component Status"]        = $Agent.ComponentStatus
+    $Row["Reboot Required"]         = $Agent.RebootRequired
+    $Row["Time Gap (s)"]            = if ($Agent.TimeGap) { $Agent.TimeGap } else { "" }
+    $Row["License Status"]          = $Agent.LicenseStatus
+    $Row["License Type"]            = $Agent.LicenseType
+    $Row["License Expiry"]          = $Agent.LicenseExpiry
+    $Row["Approved List State"]     = $Agent.ApprovedListState
+    $Row["Approved List Count"]     = $Agent.ApprovedListCount
+    $Row["Approved List Progress %"] = $Agent.ApprovedListProgress
+    $Row["OBAD Mode"]               = $Agent.OBADMode
+    $Row["OBAD Progress %"]         = $Agent.OBADProgress
+    $Row["Device Control"]          = $Agent.DeviceControl
+    $Row["Last Connected"]          = $Agent.LastConnected
+    $Row["Last Upgraded"]           = $Agent.LastUpgraded
+    $Row["Last Component Update"]   = $Agent.LastComponentUpdate
+    $Row["Registered At"]           = $Agent.RegisteredAt
+
+    # Tree columns: path[0] → "All", path[1] → "L2", etc.
+    # Shorter paths leave trailing columns empty.
     for ($i = 0; $i -lt $TreeHeaders.Count; $i++) {
         $Header     = $TreeHeaders[$i]
         $Row[$Header] = if ($i -lt $Agent.Path.Count) { $Agent.Path[$i] } else { "" }
@@ -571,7 +670,7 @@ catch {
 
 $OnlineCount  = @($ResolvedAgents | Where-Object { $_.Online -eq "Yes" }).Count
 $OfflineCount = $ResolvedAgents.Count - $OnlineCount
-$ColCount     = 4 + $TreeHeaders.Count + 1   # fixed + tree + FullPath
+$ColCount     = 4 + 28 + $TreeHeaders.Count + 1   # fixed + detail + tree + FullPath
 
 Write-Host ""
 Write-Host "==============================================================" -ForegroundColor Green

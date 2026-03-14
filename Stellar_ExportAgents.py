@@ -382,6 +382,30 @@ def resolve_path(group_uuid, group_map):
     return path
 
 
+def fmt_ts(val):
+    """
+    Converts a Unix timestamp (returned as an int or a numeric string by the
+    StellarOne API) into a human-readable UTC date string.
+
+    StellarOne uses int64 for timestamps; the REST/JSON layer may return them
+    as either a plain integer or a quoted string (e.g. "1709809200").
+    Both forms are handled here.
+
+    Returns an empty string for zero, null, or unparseable values.
+    """
+    if not val or val == "0" or val == 0:
+        return ""
+    try:
+        ts = int(val)
+        if ts == 0:
+            return ""
+        return datetime.datetime.fromtimestamp(
+            ts, tz=datetime.timezone.utc
+        ).strftime("%Y-%m-%d %H:%M UTC")
+    except (ValueError, TypeError, OSError):
+        return ""
+
+
 # ==============================================================================
 # SECTION 6 - MAIN WORKFLOW
 # ==============================================================================
@@ -437,12 +461,47 @@ for agent in all_agents:
     online_string = "Yes" if online_bool else "No"
 
     resolved_agents.append({
+        # --- Fixed identity columns ---
         "hostname":     agent.get("hostname",  ""),
         "ip":           agent.get("ipAddress", ""),
         "online":       online_string,
         "direct_group": direct_group,
-        "path":         path,        # list: ["All", "SiteA", ...]
-        "full_path":    full_path,
+        # --- Identity / Inventory ---
+        "mac_address":  agent.get("macAddress",    ""),
+        "os":           agent.get("os",            ""),
+        "vendor":       agent.get("vendor",        ""),
+        "model":        agent.get("model",         ""),
+        "location":     agent.get("location",      ""),
+        "description":  agent.get("description",   ""),
+        "product":      agent.get("productCode",   ""),
+        "version":      agent.get("productVersion",""),
+        # --- Status / Health ---
+        "sync_status":      agent.get("syncStatus",          ""),
+        "realtime_scan":    agent.get("realtimeScanStatus",  ""),
+        "lockdown":         agent.get("lockdownStatus",      ""),
+        "maintenance":      agent.get("maintenanceStatus",   ""),
+        "component_status": agent.get("componentStatus",     ""),
+        "reboot_required":  "Yes" if agent.get("rebootRequired") else "No",
+        "time_gap":         str(agent.get("timeGap") or ""),
+        # --- License ---
+        "license_status":   agent.get("licenseStatus", ""),
+        "license_type":     agent.get("licenseType",   ""),
+        "license_expiry":   fmt_ts(agent.get("licenseExpiredAt")),
+        # --- Security features ---
+        "approved_list_state":    agent.get("approvedListState",    ""),
+        "approved_list_count":    str(agent.get("approvedListCount")    or ""),
+        "approved_list_progress": str(agent.get("approvedListProgress") or ""),
+        "obad_mode":              agent.get("obadMode",    ""),
+        "obad_progress":          str(agent.get("obadProgress") or ""),
+        "device_control":         agent.get("deviceControlStatus", ""),
+        # --- Timestamps ---
+        "last_connected":        fmt_ts(agent.get("connectedAt")),
+        "last_upgraded":         fmt_ts(agent.get("upgradedAt")),
+        "last_component_update": fmt_ts(agent.get("lastComponentUpdatedAt")),
+        "registered_at":         fmt_ts(agent.get("createdAt")),
+        # --- Tree (computed above) ---
+        "path":      path,
+        "full_path": full_path,
     })
 
 # Find the maximum path depth across all agents.
@@ -472,7 +531,37 @@ print(f"[STEP 4/4] Writing CSV file: {OUTPUT_FILE}")
 #   Every row in this column will contain the string "All", making it a useful
 #   visual anchor when you open the file in Excel.
 tree_headers = ["All"] + [f"L{i}" for i in range(2, max_depth + 1)]
-fieldnames   = ["Hostname", "IP", "Online", "DirectGroup"] + tree_headers + ["FullPath"]
+
+# Detail columns inserted between DirectGroup and the tree columns.
+# DETAIL_FIELDS  : CSV header names (human-readable)
+# DETAIL_KEYS    : matching keys in each resolved_agents dict entry
+DETAIL_FIELDS = [
+    "MAC Address", "OS", "Vendor", "Model", "Location", "Description",
+    "Product", "Version",
+    "Sync Status", "Realtime Scan", "Lockdown", "Maintenance",
+    "Component Status", "Reboot Required", "Time Gap (s)",
+    "License Status", "License Type", "License Expiry",
+    "Approved List State", "Approved List Count", "Approved List Progress %",
+    "OBAD Mode", "OBAD Progress %", "Device Control",
+    "Last Connected", "Last Upgraded", "Last Component Update", "Registered At",
+]
+DETAIL_KEYS = [
+    "mac_address", "os", "vendor", "model", "location", "description",
+    "product", "version",
+    "sync_status", "realtime_scan", "lockdown", "maintenance",
+    "component_status", "reboot_required", "time_gap",
+    "license_status", "license_type", "license_expiry",
+    "approved_list_state", "approved_list_count", "approved_list_progress",
+    "obad_mode", "obad_progress", "device_control",
+    "last_connected", "last_upgraded", "last_component_update", "registered_at",
+]
+
+fieldnames = (
+    ["Hostname", "IP", "Online", "DirectGroup"]
+    + DETAIL_FIELDS
+    + tree_headers
+    + ["FullPath"]
+)
 
 try:
     # newline="" is required by the Python csv module to prevent extra blank
@@ -490,7 +579,7 @@ try:
         for agent in resolved_agents:
             path = agent["path"]
 
-            # Start with the fixed columns.
+            # Fixed identity columns.
             row = {
                 "Hostname":    agent["hostname"],
                 "IP":          agent["ip"],
@@ -498,9 +587,12 @@ try:
                 "DirectGroup": agent["direct_group"],
             }
 
-            # Fill in the tree columns.  path[0] goes under "All", path[1]
-            # under "L2", etc.  If the path is shorter than max_depth, the
-            # remaining tree columns are left as empty strings.
+            # Detail columns (all agent fields, in order).
+            for field_name, key in zip(DETAIL_FIELDS, DETAIL_KEYS):
+                row[field_name] = agent.get(key, "")
+
+            # Tree columns: path[0] → "All", path[1] → "L2", etc.
+            # Shorter paths leave trailing columns empty.
             for idx, header in enumerate(tree_headers):
                 row[header] = path[idx] if idx < len(path) else ""
 

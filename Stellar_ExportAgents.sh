@@ -406,6 +406,23 @@ def resolve_path(group_uuid):
     return path
 
 
+def fmt_ts(val):
+    """
+    Converts a Unix timestamp (int or numeric string) to a readable UTC
+    date string.  Returns empty string for zero, null, or unparseable values.
+    """
+    if not val or val == "0" or val == 0:
+        return ""
+    try:
+        from datetime import datetime, timezone
+        ts = int(val)
+        if ts == 0:
+            return ""
+        return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    except (ValueError, TypeError, OSError):
+        return ""
+
+
 # -----------------------------------------------------------------------
 # Resolve every agent's hierarchy path.
 # -----------------------------------------------------------------------
@@ -418,12 +435,47 @@ for agent in all_agents:
     online_str   = "Yes" if agent.get("agentOnlineStatus", False) else "No"
 
     resolved.append({
+        # Fixed identity columns
         "hostname":     agent.get("hostname",  ""),
         "ip":           agent.get("ipAddress", ""),
         "online":       online_str,
         "direct_group": direct_group,
-        "path":         path,
-        "full_path":    full_path,
+        # Identity / Inventory
+        "mac_address":  agent.get("macAddress",    ""),
+        "os":           agent.get("os",            ""),
+        "vendor":       agent.get("vendor",        ""),
+        "model":        agent.get("model",         ""),
+        "location":     agent.get("location",      ""),
+        "description":  agent.get("description",   ""),
+        "product":      agent.get("productCode",   ""),
+        "version":      agent.get("productVersion",""),
+        # Status / Health
+        "sync_status":      agent.get("syncStatus",         ""),
+        "realtime_scan":    agent.get("realtimeScanStatus", ""),
+        "lockdown":         agent.get("lockdownStatus",     ""),
+        "maintenance":      agent.get("maintenanceStatus",  ""),
+        "component_status": agent.get("componentStatus",    ""),
+        "reboot_required":  "Yes" if agent.get("rebootRequired") else "No",
+        "time_gap":         str(agent.get("timeGap") or ""),
+        # License
+        "license_status":   agent.get("licenseStatus", ""),
+        "license_type":     agent.get("licenseType",   ""),
+        "license_expiry":   fmt_ts(agent.get("licenseExpiredAt")),
+        # Security features
+        "approved_list_state":    agent.get("approvedListState",    ""),
+        "approved_list_count":    str(agent.get("approvedListCount")    or ""),
+        "approved_list_progress": str(agent.get("approvedListProgress") or ""),
+        "obad_mode":              agent.get("obadMode",    ""),
+        "obad_progress":          str(agent.get("obadProgress") or ""),
+        "device_control":         agent.get("deviceControlStatus", ""),
+        # Timestamps
+        "last_connected":        fmt_ts(agent.get("connectedAt")),
+        "last_upgraded":         fmt_ts(agent.get("upgradedAt")),
+        "last_component_update": fmt_ts(agent.get("lastComponentUpdatedAt")),
+        "registered_at":         fmt_ts(agent.get("createdAt")),
+        # Tree
+        "path":      path,
+        "full_path": full_path,
     })
 
 # Find the maximum depth so we know how many "L" columns to create.
@@ -436,7 +488,34 @@ print("  [INFO] Maximum group nesting depth: " + str(max_depth), flush=True)
 #   Tree columns  : "All" (always L1), then L2, L3, ... Ln
 #   Trailing column: FullPath
 tree_headers = ["All"] + [f"L{i}" for i in range(2, max_depth + 1)]
-fieldnames   = ["Hostname", "IP", "Online", "DirectGroup"] + tree_headers + ["FullPath"]
+
+DETAIL_FIELDS = [
+    "MAC Address", "OS", "Vendor", "Model", "Location", "Description",
+    "Product", "Version",
+    "Sync Status", "Realtime Scan", "Lockdown", "Maintenance",
+    "Component Status", "Reboot Required", "Time Gap (s)",
+    "License Status", "License Type", "License Expiry",
+    "Approved List State", "Approved List Count", "Approved List Progress %",
+    "OBAD Mode", "OBAD Progress %", "Device Control",
+    "Last Connected", "Last Upgraded", "Last Component Update", "Registered At",
+]
+DETAIL_KEYS = [
+    "mac_address", "os", "vendor", "model", "location", "description",
+    "product", "version",
+    "sync_status", "realtime_scan", "lockdown", "maintenance",
+    "component_status", "reboot_required", "time_gap",
+    "license_status", "license_type", "license_expiry",
+    "approved_list_state", "approved_list_count", "approved_list_progress",
+    "obad_mode", "obad_progress", "device_control",
+    "last_connected", "last_upgraded", "last_component_update", "registered_at",
+]
+
+fieldnames = (
+    ["Hostname", "IP", "Online", "DirectGroup"]
+    + DETAIL_FIELDS
+    + tree_headers
+    + ["FullPath"]
+)
 
 # Write the CSV file.
 # utf-8-sig writes a UTF-8 BOM so Excel auto-detects the encoding on Windows.
@@ -455,6 +534,8 @@ with open(output_file, "w", newline="", encoding="utf-8-sig") as csv_file:
             "Online":      agent["online"],
             "DirectGroup": agent["direct_group"],
         }
+        for field_name, key in zip(DETAIL_FIELDS, DETAIL_KEYS):
+            row[field_name] = agent.get(key, "")
         for idx, header in enumerate(tree_headers):
             row[header] = path[idx] if idx < len(path) else ""
         row["FullPath"] = agent["full_path"]
