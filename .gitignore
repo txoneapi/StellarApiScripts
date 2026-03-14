@@ -8,3 +8,4 @@ StellarOne3.3.1392.openApi.json
 # Temporary helper scripts
 _*.ps1
 _*.py
+_*.js
