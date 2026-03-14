@@ -5,6 +5,9 @@ GithubCredentials.txt
 # Large vendor API spec
 StellarOne3.3.1392.openApi.json
 
+# Lab documents (kept local only, not pushed to GitHub)
+*.docx
+
 # Temporary helper scripts
 _*.ps1
 _*.py
