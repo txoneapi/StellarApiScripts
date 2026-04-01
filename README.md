@@ -10,6 +10,7 @@ PowerShell, Python, and Bash scripts that automate administrative tasks on **TXO
 |--------|-------------|------|
 | [Stellar_CopyGroupPolicy](./Stellar_CopyGroupPolicy.md) | Copies a security policy from one agent group to another | [md](./Stellar_CopyGroupPolicy.md) · [pdf](./Stellar_CopyGroupPolicy.pdf) |
 | [Stellar_ExportAgents](./Stellar_ExportAgents.md) | Exports all agents to a CSV file reflecting the group tree structure | [md](./Stellar_ExportAgents.md) · [pdf](./Stellar_ExportAgents.pdf) |
+| [Stellar_ImportIOCs](./Stellar_ImportIOCs.md) | Imports Indicators of Compromise (IOCs) from a CSV file into StellarOne | [md](./Stellar_ImportIOCs.md) · [pdf](./Stellar_ImportIOCs.pdf) |
 
 ---
 
@@ -50,5 +51,11 @@ StellarApiScripts/
 ├── Stellar_ExportAgents.pdf           ← documentation (PDF)
 ├── Stellar_ExportAgents.ps1           ← PowerShell 5.1
 ├── Stellar_ExportAgents.py            ← Python 3
-└── Stellar_ExportAgents.sh            ← Bash
+├── Stellar_ExportAgents.sh            ← Bash
+│
+├── Stellar_ImportIOCs.md              ← documentation
+├── Stellar_ImportIOCs.pdf             ← documentation (PDF)
+├── Stellar_ImportIOCs.ps1             ← PowerShell 5.1
+├── Stellar_ImportIOCs.py              ← Python 3
+└── Stellar_ImportIOCs.sh              ← Bash
 ```
