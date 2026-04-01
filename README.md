@@ -29,8 +29,6 @@ StellarOneURL="https://YOUR_STELLARONE_IP_OR_HOSTNAME"
 ApiKey="YOUR_STELLARONE_API_KEY_HERE"
 ```
 
-> **Security note:** `StellarOne.conf` contains sensitive credentials. It is listed in `.gitignore` and must never be committed.
-
 ---
 
 ## Repo layout
